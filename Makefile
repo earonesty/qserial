@@ -3,6 +3,6 @@
 test:
 	cmake --version
 	mkdir -p build
-	cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
-	cmake --build build
+	cd build && cmake .. -DCMAKE_BUILD_TYPE=Release
+	cd build && cmake --build
 	cd build && ctest --verbose
