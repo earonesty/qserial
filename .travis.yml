@@ -11,4 +11,4 @@ install:
   - pip install --user codecov
 
 before_install:
-    - sudo apt install -qq valgrind
+    - sudo apt-get install -qq libc6-dbg valgrind
