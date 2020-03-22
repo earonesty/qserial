@@ -2,10 +2,10 @@ language: c++
 compiler: gcc
 
 script:
-  - make coverage
+  - make test
 
 after_success:
-  - codecov --env TRAVIS_OS_NAME
+  - ./gcov.sh
 
 install:
-  - pip insall codecov
+  - pip install codecov
