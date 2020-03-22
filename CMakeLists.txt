@@ -29,14 +29,3 @@ endif()
 
 add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND} --verbose --no-compress-output --output-on-failure)
 add_dependencies(check qserial-test)
-
-if(CMAKE_COMPILER_IS_GNUCXX)
-    set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR})
-    include(CodeCoverage)
-    append_coverage_compiler_flags()
-    setup_target_for_coverage_lcov(
-        NAME coverage 
-        EXECUTABLE $<TARGET_FILE:qserial-test> 
-        DEPENDENCIES qserial-test 
-        EXCLUDE "catch.hpp" "7/*" "/usr/*")
-endif()
