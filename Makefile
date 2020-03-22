@@ -3,7 +3,7 @@
 build/CMakeCache.txt: CMakeLists.txt *.hpp
 	cmake --version
 	mkdir -p build
-	cd build && cmake .. -DCMAKE_BUILD_TYPE=Debug
+	cd build && cmake .. -DCMAKE_BUILD_TYPE=Debug -DVALGRIND=On
 
 coverage: test
 	cd build && make coverage
