@@ -29,3 +29,16 @@ endif()
 
 add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND} --verbose --no-compress-output --output-on-failure)
 add_dependencies(check qserial-test)
+
+if(CMAKE_COMPILER_IS_GNUCXX)
+    set(COVERAGE_COMPILER_FLAGS "-g -fprofile-arcs -ftest-coverage")
+
+    function(append_coverage_compiler_flags)
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${COVERAGE_COMPILER_FLAGS}" PARENT_SCOPE)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COVERAGE_COMPILER_FLAGS}" PARENT_SCOPE)
+        set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} ${COVERAGE_COMPILER_FLAGS}" PARENT_SCOPE)
+        message(STATUS "Appending code coverage compiler flags: ${COVERAGE_COMPILER_FLAGS}")
+    endfunction() # append_coverage_compiler_flags
+
+    append_coverage_compiler_flags()
+endif()
