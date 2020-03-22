@@ -9,3 +9,6 @@ after_success:
 
 install:
   - pip install --user codecov
+
+before_install:
+    - sudo apt install -qq valgrind
