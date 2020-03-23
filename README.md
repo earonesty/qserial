@@ -13,7 +13,7 @@
  - varint field id (1st 32 fields addressable in 1 byte)
  - varint + length for str/binary
  - zigzag encoding for signed
- - todo: cast uint64/32 for dbl/float
+ - todo: repeated + packed
 
 ## Interface
 
@@ -25,12 +25,13 @@
     - call `get_xxx(enum)` to get fields
 
 ## Checks
- - Fields must be sequential and not repeat
- - Fields must be known to schema (deprecated==read-only)
+ - Fields must be sequential and not repeat, unless marked repeated
+ - Arrays/repeated fields must be sequential 
+ - Unknown (forward compat) fields must be > schema max field
  - Wire type fixed via field type and length
 
 ## Speed
- - Zero-copy string/buffer access
+ - Zero-copy string/buffer access for byte decoding
  - TODO: benchmark stuff 
 
 ## TODO:

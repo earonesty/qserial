@@ -37,6 +37,19 @@ TEST_CASE("serial::vint") {
     CHECK(ret == 9999);
 }
 
+TEST_CASE("serial::fint") {
+    bytes out;
+    Schema::encode_fixed(out, (uint32_t) 44);
+    Schema::encode_fixed(out, (uint64_t) 99);
+    CHECK(out.size() == 12);
+    uint32_t ret0;
+    uint64_t ret1;
+    size_t off = 0;
+    Schema::decode_fixed(out, &off, &ret0);
+    CHECK(ret0 == 44);
+    Schema::decode_fixed(out, &off, &ret1);
+    CHECK(ret1 == 99);
+}
 TEST_CASE("serial::uint_max") {
     Schema s;
     s.add_field(9, Schema::UInt, true);
@@ -204,3 +217,20 @@ TEST_CASE("serial::bad") {
 }
 
 
+TEST_CASE("serial::flt/dbl") {
+    Schema s;
+    s.add_field(9, Schema::Flt, true);
+    s.add_field(10, Schema::Dbl, true);
+
+    auto enc = s.encode();
+
+    enc.set(9, FLT_MAX);
+    enc.set(10, DBL_MAX);
+
+    std::cout << "flt/dbl-max: " << buf2hex(enc.out()) << std::endl;
+
+    auto ret = s.decode(enc.out());
+
+    CHECK(FLT_MAX == ret.get_flt(9));
+    CHECK(DBL_MAX == ret.get_dbl(10));
+}
