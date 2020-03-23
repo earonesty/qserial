@@ -35,5 +35,4 @@
  - TODO: benchmark stuff 
 
 ## TODO:
- - double/float
  - stream i/o for encode/decode
