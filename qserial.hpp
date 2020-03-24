@@ -15,9 +15,8 @@ namespace qserial {
  * Limitations:
  *
  *  - Use your own enum for field names
- *  - Max UINT64_MAX fields
- *  - Max UINT64_MAX per field
- *  - No floating-point yet
+ *  - Max INT64_MAX fields
+ *  - Max INT64_MAX per field
  *  
  */
 
@@ -111,6 +110,7 @@ class Schema {
       public:
         Type type = None;
         bool required = false;
+        bool repeated = false;
     };
  
     // typed union for parsed values
@@ -141,7 +141,7 @@ class Schema {
 
         const Schema &schema;
         const bytes &in;
-        std::vector<Val> vals;
+        std::vector<std::vector<Val>> vals;
         int64_t _prev = -1;
 
         int64_t decode_int64(uint64_t dec) {
@@ -185,8 +185,9 @@ class Schema {
                     throw Error("invalid field length");
                 }
                 if (ent.type == Bin) {
-                    vals[num] = Val(ent.type, in.data() + *offset, len);
+                    vals[num].emplace_back(ent.type, in.data() + *offset, len);
                 } else {
+                    vals[num].emplace_back(ent.type, in.data() + *offset, len);
                     #ifdef QSERIAL_STRICT
                     // setting this breaks forward compatibility
                     throw Error("invalid entry type/encoding pair");
@@ -194,13 +195,13 @@ class Schema {
                 }
                 *offset += len;
             } else if (ent.type == SInt and enc == EVInt) {
-                vals[num] = Val(ent.type, decode_int64(vint));
+                vals[num].emplace_back(ent.type, decode_int64(vint));
             } else if (ent.type == UInt and enc == EVInt) {
-                vals[num] = Val(ent.type, vint);
+                vals[num].emplace_back(ent.type, vint);
             } else if (ent.type == Flt and enc == E4) {
-                vals[num] = Val(ent.type, bitcast<uint32_t, float>(v32));
+                vals[num].emplace_back(ent.type, bitcast<uint32_t, float>(v32));
             } else if (ent.type == Dbl and enc == E8) {
-                vals[num] = Val(ent.type, bitcast<uint64_t, double>(vint));
+                vals[num].emplace_back(ent.type, bitcast<uint64_t, double>(vint));
             } else {
                 #ifdef QSERIAL_STRICT
                 // setting this breaks forward compatibility
@@ -209,12 +210,18 @@ class Schema {
             }
         }
 
-        bool check_range(size_t number) const {
+        bool check_range(size_t number, size_t index) const {
             if (number >= schema.size()) {
                 throw Error("field out of range");
             }
-            if (number >= vals.size() && schema.fields[number].required) {
-                throw Error("missing required field");
+            if (number >= vals.size()) {
+                if (schema.fields[number].required) {
+                    throw Error("missing required field");
+                }
+                return false;
+            }
+            if (index >= vals[number].size()) {
+                throw Error("invalid array index");
             }
             return number < vals.size();
         }
@@ -222,88 +229,93 @@ class Schema {
         explicit Deserial(const Schema &schema, const bytes &data) : schema(schema), in(data) {}
 
       public:
-        void get(size_t number, const uint8_t **buf, size_t *len) const {
-            if (!check_range(number)) {
+        void get(size_t number, size_t index, const uint8_t **buf, size_t *len) const {
+            if (!check_range(number, index)) {
                 *buf = nullptr;
                 *len = 0;
                 return;
             }
-            if (vals[number].type != Bin) {
+            if (vals[number][index].type != Bin) {
                 throw Error("expected string");
             }
-            *buf = vals[number].dat;
-            *len = vals[number].len;
+            *buf = vals[number][index].dat;
+            *len = vals[number][index].len;
         }
-        void get(size_t number, const char **buf, size_t *len) const {
-            get(number, (const uint8_t **) buf, len);
+        void get(size_t number, size_t index, const char **buf, size_t *len) const {
+            get(number, index, (const uint8_t **) buf, len);
+        }
+        template<typename T>
+        void get(size_t number, T **buf, size_t *len) const {
+            get(number, 0, buf, len);
         }
 
         template <typename T>
-        bool get(size_t number, T *ret) const {
-            if (!check_range(number)) {
+        bool get(size_t number, size_t index, T *ret) const {
+            if (!check_range(number, index)) {
                 return false;
             }
-            if (vals[number].type == SInt) {
-                *ret = vals[number].ival;
-            } else if (vals[number].type == UInt) {
-                *ret = vals[number].uval;
-            } else if (vals[number].type == Flt) {
-                *ret = vals[number].fval;
-            } else if (vals[number].type == Dbl) {
-                *ret = vals[number].dval;
+            if (vals[number][0].type == SInt) {
+                *ret = vals[number][0].ival;
+            } else if (vals[number][0].type == UInt) {
+                *ret = vals[number][0].uval;
+            } else if (vals[number][0].type == Flt) {
+                *ret = vals[number][0].fval;
+            } else if (vals[number][0].type == Dbl) {
+                *ret = vals[number][0].dval;
             } else {
                 throw Error("invalid type");
             }
             return true;
         }
 
-        std::string get_str(size_t number) const {
-            if (!check_range(number)) 
+        template <typename T>
+        bool get(size_t number, T *ret) const {
+            return get(number, 0, ret);
+        }
+
+        std::string get_str(size_t number, size_t index=0) const {
+            if (!check_range(number, index)) 
                 return std::string();
-            if (vals[number].type != Bin) 
+            if (vals[number][index].type != Bin) 
                 throw Error("expected string");
-            return std::string(vals[number].dat, vals[number].dat + vals[number].len);
+            return std::string(vals[number][index].dat, vals[number][index].dat + vals[number][index].len);
         }
 
-        bytes get_bin(size_t number) const {
-            if (!check_range(number)) 
+        bytes get_bin(size_t number, size_t index=0) const {
+            if (!check_range(number, index)) 
                 return bytes();
-            if (vals[number].type != Bin) 
+            if (vals[number][index].type != Bin) 
                 throw Error("expected string");
-            return bytes(vals[number].dat, vals[number].dat + vals[number].len);
-        }
- 
-        int64_t get_sint(size_t number, int64_t def=0) const {
-            int64_t ret;
-            if (!get(number, &ret)) 
-                return def;
-            return ret;
+            return bytes(vals[number][index].dat, vals[number][index].dat + vals[number][index].len);
         }
 
-        uint64_t get_uint(size_t number, uint64_t def=0) const {
-            uint64_t ret;
-            if (!get(number, &ret)) 
-                return def;
-            return ret;
-        }
+#define GET_NUM(prefix, type)\
+        type get_##prefix(size_t number, type def=0) const { \
+            type ret; \
+            if (!get(number, &ret)) \
+                return def; \
+            return ret; \
+        } \
+        type arr_get_##prefix(size_t number, size_t index, type def=0) const { \
+            type ret; \
+            if (!get(number, index, &ret)) \
+                return def; \
+            return ret; \
+        } \
 
-        float get_flt(size_t number, float def=0) const {
-            float ret;
-            if (!get(number, &ret)) 
-                return def;
-            return ret;
-        }
+        GET_NUM(sint, int64_t)
+        GET_NUM(uint, uint64_t)
+        GET_NUM(flt, float)
+        GET_NUM(dbl, double)
 
-        double get_dbl(size_t number, double def=0) const {
-            double ret;
-            if (!get(number, &ret)) 
-                return def;
-            return ret;
+        size_t arr_len(size_t number) const {
+            check_range(number, 0);
+            return vals[number].size();
         }
 
         bool is_valid(const Schema & schema) const {
             for (size_t i = 0; i < schema.fields.size(); ++i) {
-                if (schema.fields[i].required && ( i>= vals.size() || vals[i].type == None ) ) {
+                if (schema.fields[i].required && ( i>= vals.size() || vals[i].size() == 0 ) ) {
                     return false;
                 }
             }
@@ -350,11 +362,18 @@ class Schema {
         std::vector<bool> _fdset;
         int64_t _prev = -1;
 
-        void check_seq(size_t number) {
-            if (number >= INT64_MAX) {
-                throw Error("field num too high");
+        const Entry &field(size_t num) {
+            if (num >= schema.fields.size()) {
+                throw Error("field num too high for schema");
             }
+            return schema.fields[num];
+        }
+
+        void check_seq(size_t number) {
             if (((int64_t)number) <= _prev) {
+                if (field(number).repeated) {
+                    return;
+                }
                 throw Error("fields must be set sequentially");
             }
             _prev = number;
@@ -391,7 +410,7 @@ class Schema {
         }
 
         void set(size_t number, int64_t value) {
-            if (schema.fields[number].type == UInt) {
+            if (field(number).type == UInt) {
                 set(number, (uint64_t) value);
                 return;
             }
@@ -402,7 +421,7 @@ class Schema {
         }
 
         void set(size_t number, uint64_t value) {
-            if (schema.fields[number].type == SInt) {
+            if (field(number).type == SInt) {
                 set(number, (int64_t) value);
                 return;
             }
@@ -415,7 +434,7 @@ class Schema {
         }
 
         void set(size_t number, double value) {
-            if (schema.fields[number].type == Flt) {
+            if (field(number).type == Flt) {
                 set(number, (double) value);
                 return;
             }
@@ -425,7 +444,7 @@ class Schema {
         }
 
         void set(size_t number, float value) {
-            if (schema.fields[number].type == Dbl) {
+            if (field(number).type == Dbl) {
                 set(number, (float) value);
                 return;
             }
@@ -463,12 +482,13 @@ class Schema {
         size_t number;
         Type type;
         bool required;
+        bool repeated;
     };
 
     // cppcheck-suppress noExplicitConstructor
     Schema(const std::initializer_list<Field> &in) {        // NOLINT
         for (auto e: in) {
-            add_field(e.number, e.type, e.required);
+            add_field(e.number, e.type, e.required, e.repeated);
         }
     }
 
@@ -504,11 +524,11 @@ class Schema {
         return ret;
     }
 
-    void add_field(size_t number, Type type, bool required) {
+    void add_field(size_t number, Type type, bool required, bool repeated=false) {
         if (number >= fields.size()) {
             fields.resize(number + 1);
         }
-        fields[number] = {type, required};
+        fields[number] = {type, required, repeated};
     }
 
 };

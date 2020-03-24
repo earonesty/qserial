@@ -5,6 +5,8 @@
 
  - Header-only library suitable for android/arm builds
  - Small, easy to understand
+ - No pre-compilation of headers
+ - No template specialization complexity
 
 ## Format overview
 
@@ -13,7 +15,6 @@
  - varint field id (1st 32 fields addressable in 1 byte)
  - varint + length for str/binary
  - zigzag encoding for signed
- - todo: repeated + packed
 
 ## Interface
 
@@ -23,6 +24,8 @@
     - call `out()` to get output
  - call `decode(bytes)` to get decoder
     - call `get_xxx(enum)` to get fields
+    - call `arr_get_xxx(enum, index)` to get repeated fields
+    - call `arr_len(enum)` to get repeated field length
 
 ## Checks
  - Fields must be sequential and not repeat, unless marked repeated
@@ -32,7 +35,7 @@
 
 ## Speed
  - Zero-copy string/buffer access for byte decoding
- - TODO: benchmark stuff 
+ - ~2% slower than google protobuf
 
 ## TODO:
  - stream i/o for encode/decode

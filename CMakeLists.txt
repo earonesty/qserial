@@ -11,15 +11,23 @@ cmake_minimum_required(VERSION 3.11)
 set(CMAKE_CXX_STANDARD 17)
 
 option(VALGRIND "Run tests with valgrind" OFF)
+option(BENCHMARK "Build benchmark test" OFF)
 
 add_library(qserial INTERFACE)
 target_include_directories(qserial INTERFACE ./)
 
 enable_testing()
 
-file(GLOB TEST_SOURCES "*.cpp")
+file(GLOB TEST_SOURCES "test_*.cpp")
 add_executable(qserial-test ${TEST_SOURCES})
 target_link_libraries(qserial-test qserial)
+
+if(${BENCHMARK})
+    find_package(Protobuf)
+    file(GLOB BENCH_SOURCES "bench/*.cpp" "bench/*.cc")
+    add_executable(qserial-bench ${BENCH_SOURCES})
+    target_link_libraries(qserial-bench qserial ${Protobuf_LIBRARIES})
+endif()
 
 if(${VALGRIND})
     add_test(NAME qserial-test COMMAND valgrind --show-reachable=yes --track-origins=yes --error-exitcode=3 --leak-check=full $<TARGET_FILE:qserial-test>)

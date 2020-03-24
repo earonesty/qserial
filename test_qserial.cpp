@@ -234,3 +234,38 @@ TEST_CASE("serial::flt/dbl") {
     CHECK(FLT_MAX == ret.get_flt(9));
     CHECK(DBL_MAX == ret.get_dbl(10));
 }
+
+TEST_CASE("serial::arr") {
+    Schema s;
+    s.add_field(9, Schema::Flt, true, true);
+    s.add_field(10, Schema::Dbl, false, true);
+    s.add_field(11, Schema::Bin, false, true);
+
+    auto enc = s.encode();
+
+    enc.set(9, FLT_MAX);
+    enc.set(9, FLT_MAX);
+    enc.set(9, FLT_MAX);
+    enc.set(10, DBL_MAX);
+    enc.set(10, DBL_MAX);
+    enc.set(10, DBL_MAX);
+    enc.set(11, "hi");
+    enc.set(11, "hi");
+    enc.set(11, "hi");
+
+    std::cout << "array: " << buf2hex(enc.out()) << std::endl;
+
+    auto ret = s.decode(enc.out());
+    CHECK(3 == ret.arr_len(9));
+    CHECK(3 == ret.arr_len(10));
+    CHECK(3 == ret.arr_len(11));
+    CHECK(FLT_MAX == ret.arr_get_flt(9, 0));
+    CHECK(FLT_MAX == ret.arr_get_flt(9, 1));
+    CHECK(FLT_MAX == ret.arr_get_flt(9, 2));
+    CHECK(DBL_MAX == ret.arr_get_dbl(10, 0));
+    CHECK(DBL_MAX == ret.arr_get_dbl(10, 1));
+    CHECK(DBL_MAX == ret.arr_get_dbl(10, 2));
+    CHECK("hi" == ret.get_str(11, 0));
+    CHECK("hi" == ret.get_str(11, 1));
+    CHECK("hi" == ret.get_str(11, 2));
+}
