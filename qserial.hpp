@@ -1,9 +1,9 @@
 #include <vector>
 #include <memory>
+#include <string>
 #include <algorithm>
 
 namespace qserial {
-
 /*
  * Simple but limited schema-driven serialization, header-only < 500 LOC.
  *
@@ -135,11 +135,15 @@ class Schema {
         Val(Type type, double dat) : type(type), dval(dat) {};
     };
 
+  public:
     // container for parsed values
     class Deserial {
         friend class Schema;
-
+      public:
         const Schema &schema;
+
+      private:
+        const std::shared_ptr<bytes> ptr;
         const bytes &in;
         std::vector<std::vector<Val>> vals;
         int64_t _prev = -1;
@@ -159,7 +163,7 @@ class Schema {
             }
             uint64_t vint;
             uint32_t v32;
-            
+
             if (enc == E4) {
                 if (*offset + 4 > in.size()) 
                     throw Error("invalid field length 4");
@@ -227,6 +231,7 @@ class Schema {
         }
 
         explicit Deserial(const Schema &schema, const bytes &data) : schema(schema), in(data) {}
+        explicit Deserial(const Schema &schema, std::shared_ptr<bytes> data) : schema(schema), ptr(data), in(*data) {}
 
       public:
         void get(size_t number, size_t index, const uint8_t **buf, size_t *len) const {
@@ -328,6 +333,7 @@ class Schema {
             throw Error("field out of range");
         }
         if (fields[number].type != type) {
+            // printf("type: %i != %i\n", fields[number].type, type);
             throw Error("invalid type for field");
         }
         uint64_t dat = number;
@@ -354,7 +360,9 @@ class Schema {
   public:
     // serialization builder class
     class Serial {
+      public:
         const Schema &schema;
+      private:
 
         // caller can use this without pre-specified memory or with
         std::shared_ptr<bytes> _mem;
@@ -506,22 +514,32 @@ class Schema {
         return Serial(*this);
     }
 
-    Deserial decode(const bytes &value, bool check=true) const {
-        size_t i = 0;
+    Deserial decode(std::shared_ptr<bytes> value, bool check=true) const {
         Deserial ret(*this, value);
-        while (i < value.size()) {
+        decode(ret, check);
+        return ret;
+    }
+
+    Deserial decode(const bytes &value, bool check=true) const {
+        Deserial ret(*this, value);
+        decode(ret, check);
+        return ret;
+    }
+
+    void decode(Deserial &ret, bool check) const {
+        size_t i = 0;
+        while (i < ret.in.size()) {
             Encoding enc;
             size_t num;
-            decode_type(value, &enc, &num, &i);
+            decode_type(ret.in, &enc, &num, &i);
             if (num >= size()) {
                 throw Error("field number too large");
             }
-            ret.decode(num, fields[num], enc, &i); 
+            ret.decode(num, fields[num], enc, &i);
         }
         if (check && !ret.is_valid(*this)) {
             throw Error("missing required fields");
         }
-        return ret;
     }
 
     void add_field(size_t number, Type type, bool required, bool repeated=false) {
