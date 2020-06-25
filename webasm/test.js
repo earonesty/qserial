@@ -1,5 +1,5 @@
 let qs = require('./qserial.js')
-
+let assert = require('assert')
 
 class TestMan {
     constructor() {
@@ -22,22 +22,37 @@ class TestMan {
 
     log(...args) {
         let err = this.getErr();
+        let frame = err.stack.split("\n")[3];
+        let lineNumber = frame.split(":")[1];
+        let filePath = frame.split(":")[0].split('(')[1];
+        let fileName = filePath.replace(/\\/g, '/').split('/')
+        fileName = fileName[fileName.length - 1]
+        let fileInfo = fileName + ":" + lineNumber
         let d = new Date();
         let t = d.toLocaleTimeString().slice(0,-3) + "." + d.getMilliseconds()
-        this._log.push(["[" + t + "]", ...args])
+        this._log.push(["[" + t + "]", fileInfo, ...args])
     }
     
     add(name, func) {
         this._tests.push({"name": name, "func": func})
     }
     
-    async run() {
+    async run(tl) {
         let failed = 0
+        let passed = 0
+        let regex = new RegExp(tl.join("|"))
+
         for (let t of this._tests) {
             this._log = []
+            if (tl) {
+                if (!t.name.match(regex)) {
+                    continue
+                }
+            }
             try {
                 await t.func()
                 console.log(this.color("green", "OK: "), t.name)
+                passed += 1
             } catch (e) {
                 failed += 1
                 if (this.translateError) {
@@ -51,23 +66,12 @@ class TestMan {
             }
         }
         if (!failed) {
-            console.log(this.color("green", "PASSED"))
+            if (!passed) {
+                console.log("No tests run.")
+            } else {
+                console.log(this.color("green", ":PASS:"))
+            }
         }
-    }
-
-    check(func, msg) {
-        if (!func()) {
-            throw Error("Check: " + msg.join(" "))
-        }
-    }
-    isEq(a, b) {
-        this.check(()=>{return a==b}, [a, "==", b])
-    }
-    isNeq(a, b) {
-        this.check(()=>{return a!=b}, [a, "!=", b])
-    }
-    isTrue(a) {
-        this.check(()=>{return a}, [a])
     }
 };
 
@@ -93,12 +97,43 @@ test.add("basic", async () => {
     test.log("OK 3", Buffer.from(res).toString('hex'))
     d = s.decode(res, true)
     test.log("decoded", d)
-    test.isEq(d.get(1), "hello")
+    assert.equal(d.get(1), "hello")
 })
- 
+
+test.add("zero", async () => {
+    let s = new qs.Schema
+    s.add_field(9, qs.Type.UInt, true, false)
+    e = s.encode()
+    e.set(9, 0)
+    res = e.out(true)
+    d = s.decode(res, true)
+    assert.equal(d.get(9), 0)
+    assert.equal(Buffer.from(res).toString('hex'), "2400")
+})
+
+test.add("flt", async () => {
+    let s = new qs.Schema
+    s.add_field(9, qs.Type.Flt, true, false)
+    s.add_field(10, qs.Type.Dbl, true, false)
+    e = s.encode()
+    e.set(9, 1.5)
+    e.set(10, 1.5)
+    res = e.out(true)
+    d = s.decode(res, true)
+    assert.equal(d.get(9), 1.5)
+    assert.equal(d.get(10), 1.5)
+})
+
 async function main() {
+    let argv = process.argv
+    tl = []
+    for (let i=0; i < argv.length - 1; ++i) {
+        if (argv[i] == "-t") {
+            tl.push(argv[i+1])
+        }
+    }
     qs = await qs()
-    await test.run()
+    await test.run(tl)
 }
 
 main()

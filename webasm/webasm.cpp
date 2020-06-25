@@ -52,12 +52,30 @@ EMSCRIPTEN_BINDINGS(qserial) {
     class_<qserial::Schema::Serial>("Schema.Serial")
         .constructor<qserial::Schema>()
         .function("set",  optional_override([](qserial::Schema::Serial &self, size_t number, emscripten::val v) {
+            if (number >= self.schema.fields.size()) {
+                throw std::runtime_error("field out of range");
+            }
+            auto ftyp = self.schema.fields[number].type;
             auto typ = v.typeof().as<std::string>();
             if (typ == "string") {
                 auto val = v.as<std::string>();
                 self.set(number, val);
             } else if (typ == "number") {
-                self.set(number, v.as<int64_t>());
+                if (ftyp == qserial::Schema::Type::Flt) {
+                    self.set(number, v.as<float>());
+                }
+                else if (ftyp == qserial::Schema::Type::Dbl) {
+                    self.set(number, v.as<double>());
+                }
+                else if (ftyp == qserial::Schema::Type::UInt) {
+                    self.set(number, (uint64_t) v.as<unsigned int>());
+                }
+                else if (ftyp == qserial::Schema::Type::SInt) {
+                    self.set(number, (int64_t) v.as<int>());
+                }
+                else {
+                    self.set(number, v.as<double>());
+                }
             } else if (typ == "boolean") {
                 self.set(number, v.as<bool>());
             }
@@ -75,12 +93,15 @@ EMSCRIPTEN_BINDINGS(qserial) {
                 auto typ = self.schema.fields[number].type;
                 if (typ == qserial::Schema::Type::Bin) {
                     auto ret = self.get_str(number);
-                    printf("HERE %s\n", ret.c_str());
                     return emscripten::val(self.get_str(number));
                 } else if (typ == qserial::Schema::Type::UInt) {
-                    return emscripten::val(self.get_uint(number));
+                    return emscripten::val((unsigned int)self.get_uint(number));
                 } else if (typ == qserial::Schema::Type::SInt) {
                     return emscripten::val(self.get_sint(number));
+                } else if (typ == qserial::Schema::Type::Flt) {
+                    return emscripten::val(self.get_flt(number));
+                } else if (typ == qserial::Schema::Type::Dbl) {
+                    return emscripten::val(self.get_dbl(number));
                 }
                 THROW("unknown type: " << typ);
          }))

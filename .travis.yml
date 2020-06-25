@@ -3,6 +3,7 @@ compiler: gcc
 
 script:
   - make test
+  - make web-test
 
 after_success:
   - ./gcov.sh

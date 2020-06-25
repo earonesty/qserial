@@ -11,3 +11,6 @@ coverage: test
 test: build/CMakeCache.txt
 	cd build && cmake --build .
 	cd build && ctest --verbose
+
+web-test:
+	cd webasm && make test

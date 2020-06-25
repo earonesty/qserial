@@ -333,7 +333,7 @@ class Schema {
             throw Error("field out of range");
         }
         if (fields[number].type != type) {
-            printf("type: %i != %i\n", fields[number].type, type);
+            // printf("type: %i != %i\n", fields[number].type, type);
             throw Error("invalid type for field");
         }
         uint64_t dat = number;
@@ -360,7 +360,9 @@ class Schema {
   public:
     // serialization builder class
     class Serial {
+      public:
         const Schema &schema;
+      private:
 
         // caller can use this without pre-specified memory or with
         std::shared_ptr<bytes> _mem;
