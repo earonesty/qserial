@@ -113,10 +113,13 @@ class TestMan {
         await Promise.all(tests)
         if (!ctx.failed) {
             if (!ctx.passed) {
+                process.exitCode = 2
                 console.log("No tests run.")
             } else {
-                console.log(this.color("green", ":PASS:"))
+                process.exitCode = 0
             }
+        } else {
+            process.exitCode = 1
         }
     }
 
