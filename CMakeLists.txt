@@ -7,7 +7,7 @@ enable_language(CXX)
 project(qserial)
 
 # cmake settings
-cmake_minimum_required(VERSION 3.11)
+cmake_minimum_required(VERSION 3.10)
 set(CMAKE_CXX_STANDARD 17)
 
 option(VALGRIND "Run tests with valgrind" OFF)
