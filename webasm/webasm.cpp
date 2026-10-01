@@ -117,7 +117,7 @@ EMSCRIPTEN_BINDINGS(qserial) {
         .function("add_field", &qserial::Schema::add_field)
         .function("encode", (qserial::Schema::Serial (qserial::Schema::*)() const) &qserial::Schema::encode)
         .function("decode", optional_override([](qserial::Schema &self, emscripten::val dat, bool check=true) {
-            auto vec = convertJSArrayToNumberVector<uint8_t>(dat);
+            auto vec = ::convertJSArrayToNumberVector<uint8_t>(dat);
             auto ref_vec = std::shared_ptr<qserial::bytes>(vec);
             return self.decode(ref_vec, check);
          }))

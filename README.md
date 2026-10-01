@@ -39,3 +39,9 @@
 
 ## TODO:
  - stream i/o for encode/decode
+
+## TypeScript / JavaScript
+
+The existing Emscripten binding includes TypeScript declarations. See
+[webasm/README.md](webasm/README.md) for building the module, a typed example,
+and the binding's limitations.

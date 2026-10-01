@@ -1,0 +1,24 @@
+name: TypeScript bindings
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  typescript:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: webasm/package-lock.json
+      - name: Install Emscripten
+        run: |
+          git clone --depth 1 https://github.com/emscripten-core/emsdk.git "$RUNNER_TEMP/emsdk"
+          "$RUNNER_TEMP/emsdk/emsdk" install 4.0.23
+          "$RUNNER_TEMP/emsdk/emsdk" activate 4.0.23
+      - run: npm ci
+        working-directory: webasm
+      - name: Check declarations and WebAssembly behavior
+        working-directory: webasm
+        run: make test typescript-test EMSDK_ENV="$RUNNER_TEMP/emsdk/emsdk_env.sh"
