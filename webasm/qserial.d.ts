@@ -1,4 +1,4 @@
-/** TypeScript declarations for the Emscripten module built by this directory. */
+/** Initialize the Emscripten module, resolving when its native bindings are ready. */
 declare function createQserial(options?: createQserial.ModuleOptions): Promise<createQserial.Module>;
 
 declare namespace createQserial {

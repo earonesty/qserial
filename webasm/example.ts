@@ -1,5 +1,6 @@
 import createQserial = require("./qserial");
 
+/** Demonstrate a typed string round trip while releasing every native handle. */
 async function main(): Promise<void> {
     const qs = await createQserial();
     const schema = new qs.Schema();

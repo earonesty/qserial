@@ -1,0 +1,4 @@
+# Official HTTPS release archives for the installer revision pinned in CI.
+# Update these reviewed digests together with the SDK/installer versions.
+5f1565fe45a1223cedf3b0300f5089c2c64954d2895b2aaedc85043c719be965  aaa43392544d695232b70eda706d751f18980c2a-wasm-binaries.tar.xz
+14b342e71204f811bde6153be8e04b62aef63c236fef92b55f9c83154b409647  node-v24.19.0-linux-x64.tar.xz

@@ -1,10 +1,11 @@
 import createQserial = require("../qserial");
 
+/** Fail the runtime test with a diagnostic when an expectation is unmet. */
 function assert(condition: boolean, message: string): void {
     if (!condition) throw new Error(message);
 }
 
-// Compile-time checks: these calls must be rejected, and are never executed.
+/** Check that unsupported calls are rejected by TypeScript; never executed. */
 function invalidCalls(qs: createQserial.Module, schema: createQserial.Schema,
                       encoder: createQserial.Serial): void {
     // @ts-expect-error Embind expects an enum object, not its numeric value.
@@ -23,6 +24,7 @@ function invalidCalls(qs: createQserial.Module, schema: createQserial.Schema,
     schema.decode([], false).get(1).toUpperCase();
 }
 
+/** Verify the typed API against WebAssembly and a C++ wire-format fixture. */
 async function main(): Promise<void> {
     const qs = await createQserial({ locateFile: (path, prefix) => prefix + path });
     const schema = new qs.Schema();

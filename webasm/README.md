@@ -71,3 +71,9 @@ without building WebAssembly. `make typescript-test` also compiles and executes
 the TypeScript test against the actual module, covering field types, a fixed
 wire-format fixture, array input, and object cleanup. `make test` runs the
 existing JavaScript tests. TypeScript is a development dependency only.
+
+CI pins both GitHub Actions and the SDK installer to commit hashes. The Linux
+x64 SDK and bundled Node archives are fetched from the official Emscripten
+release host and checked against the reviewed SHA-256 digests in
+[`.github/emsdk.sha256`](../.github/emsdk.sha256) before installation. Update the
+installer, archive URLs, and digests together when upgrading the CI toolchain.
