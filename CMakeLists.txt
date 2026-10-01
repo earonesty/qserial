@@ -20,13 +20,15 @@ enable_testing()
 
 file(GLOB TEST_SOURCES "test_*.cpp")
 add_executable(qserial-test ${TEST_SOURCES})
-target_link_libraries(qserial-test qserial)
+target_link_libraries(qserial-test PRIVATE qserial)
 
 if(${BENCHMARK})
-    find_package(Protobuf)
-    file(GLOB BENCH_SOURCES "bench/*.cpp" "bench/*.cc")
-    add_executable(qserial-bench ${BENCH_SOURCES})
-    target_link_libraries(qserial-bench qserial ${Protobuf_LIBRARIES})
+    find_package(Protobuf REQUIRED)
+    protobuf_generate_cpp(BENCH_PROTO_SOURCES BENCH_PROTO_HEADERS bench/bench.proto)
+    add_executable(qserial-bench bench/bench_qserial.cpp ${BENCH_PROTO_SOURCES} ${BENCH_PROTO_HEADERS})
+    target_include_directories(qserial-bench PRIVATE ${CMAKE_CURRENT_BINARY_DIR} ${Protobuf_INCLUDE_DIRS})
+    target_link_libraries(qserial-bench qserial ${Protobuf_LITE_LIBRARIES})
+    add_test(NAME qserial-bench COMMAND qserial-bench)
 endif()
 
 if(${VALGRIND})
@@ -37,16 +39,12 @@ endif()
 
 add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND} --verbose --no-compress-output --output-on-failure)
 add_dependencies(check qserial-test)
+if(BENCHMARK)
+    add_dependencies(check qserial-bench)
+endif()
 
 if(CMAKE_COMPILER_IS_GNUCXX)
-    set(COVERAGE_COMPILER_FLAGS "-g -fprofile-arcs -ftest-coverage")
-
-    function(append_coverage_compiler_flags)
-        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${COVERAGE_COMPILER_FLAGS}" PARENT_SCOPE)
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COVERAGE_COMPILER_FLAGS}" PARENT_SCOPE)
-        set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} ${COVERAGE_COMPILER_FLAGS}" PARENT_SCOPE)
-        message(STATUS "Appending code coverage compiler flags: ${COVERAGE_COMPILER_FLAGS}")
-    endfunction() # append_coverage_compiler_flags
-
-    append_coverage_compiler_flags()
+    # Instrument library tests, but keep profiling overhead out of the benchmark.
+    target_compile_options(qserial-test PRIVATE -g -fprofile-arcs -ftest-coverage)
+    target_link_libraries(qserial-test PRIVATE gcov)
 endif()

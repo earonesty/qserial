@@ -35,7 +35,33 @@
 
 ## Speed
  - Zero-copy string/buffer access for byte decoding
- - ~2% slower than google protobuf
+
+The optional benchmark compares qserial with Google protobuf on the same field
+values, including four 99-byte binary fields and a zigzag-encoded signed integer.
+Each timed iteration constructs a message, serializes it, decodes it, and reads
+one decoded integer. Both cases reuse their output buffer and validate all fields
+outside the timed loop. Protobuf materializes its decoded message while qserial
+uses its own decoder; this is an API-level round-trip comparison, not a claim of
+identical decoding costs.
+
+With CMake, a C++17 compiler, protobuf development libraries, and `protoc` installed:
+
+```sh
+cmake -S . -B build-bench -DCMAKE_BUILD_TYPE=Release -DBENCHMARK=ON
+cmake --build build-bench
+ctest --test-dir build-bench --output-on-failure
+./build-bench/qserial-bench
+```
+
+On newer glibc systems, the bundled Catch version may fail to compile its POSIX
+signal handler (`MINSIGSTKSZ` is no longer a constant). Add
+`-DCMAKE_CXX_FLAGS=-DCATCH_CONFIG_NO_POSIX_SIGNALS` to the configure command to
+disable that handler while retaining the tests and assertions.
+
+Protobuf sources are generated from `bench/bench.proto` with the installed
+compiler. Report the C++ compiler, optimization settings, protobuf version,
+hardware, and repeated measurements alongside any performance comparison;
+relative speed depends on the workload and environment.
 
 ## TODO:
  - stream i/o for encode/decode

@@ -8,6 +8,6 @@ message benchy {
   string f0 = 1;
   string f1 = 2;
   uint64 f2 = 3;
-  int64 f3 = 4;
+  sint64 f3 = 4;
   repeated bytes f4 = 5;
 }
