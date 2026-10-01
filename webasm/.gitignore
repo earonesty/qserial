@@ -1,0 +1,7 @@
+emsdk/
+node_modules/
+qserial.js
+qserial.wasm
+qserial.wasm.map
+example.js
+.typescript-test/

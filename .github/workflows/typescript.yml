@@ -1,0 +1,45 @@
+name: TypeScript bindings
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  typescript:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: webasm/package-lock.json
+      - name: Install Emscripten
+        run: |
+          emsdk_revision=e566f7bdcc7735f44037911c24b87a58a3c93145
+          emsdk_dir="$RUNNER_TEMP/emsdk"
+          git init "$emsdk_dir"
+          git -C "$emsdk_dir" remote add origin https://github.com/emscripten-core/emsdk.git
+          git -C "$emsdk_dir" fetch --depth 1 origin "$emsdk_revision"
+          git -C "$emsdk_dir" checkout --detach FETCH_HEAD
+          test "$(git -C "$emsdk_dir" rev-parse HEAD)" = "$emsdk_revision"
+
+          # Verify the two archives this pinned Linux x64 installer consumes
+          # before it extracts or executes either tool. Keep them cached so
+          # emsdk installs these verified files without downloading them again.
+          mkdir -p "$emsdk_dir/downloads"
+          cd "$emsdk_dir/downloads"
+          release=aaa43392544d695232b70eda706d751f18980c2a
+          archive_base=https://storage.googleapis.com/webassembly/emscripten-releases-builds
+          curl --fail --location --retry 3 --proto '=https' --tlsv1.2 \
+            "$archive_base/linux/$release/wasm-binaries.tar.xz" \
+            -o "$release-wasm-binaries.tar.xz"
+          curl --fail --location --retry 3 --proto '=https' --tlsv1.2 \
+            "$archive_base/deps/node-v24.19.0-linux-x64.tar.xz" \
+            -o node-v24.19.0-linux-x64.tar.xz
+          sha256sum --check "$GITHUB_WORKSPACE/.github/emsdk.sha256"
+          EMSDK_KEEP_DOWNLOADS=1 "$emsdk_dir/emsdk" install 4.0.23
+          "$emsdk_dir/emsdk" activate 4.0.23
+      - run: npm ci
+        working-directory: webasm
+      - name: Check declarations and WebAssembly behavior
+        working-directory: webasm
+        run: make test typescript-test EMSDK_ENV="$RUNNER_TEMP/emsdk/emsdk_env.sh"
